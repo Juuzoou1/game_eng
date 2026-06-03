@@ -33,7 +33,7 @@ http://localhost:8000
 
 ### اللعب / Gameplay
 
-تمشّى في الساحة و**اجمع كل المجوهرات العشر** 💎، واقفز فوق الصناديق، و**اطلق على الأشباح** 👻 اللي تطاردك (وجّه نظرك عليها واضغط). كل شي له صوت ريترو 8-bit، وأول ما تجمع المجوهرات كلها تطلع لك نغمة فوز.
+تمشّى في الساحة و**اجمع كل المجوهرات العشر** 💎، واقفز فوق الصناديق، و**اطلق على الأشباح** 👻 اللي تطاردك (وجّه نظرك عليها واضغط). عندك **٣ قلوب** ❤❤❤ — لو الأشباح وصلتك ٣ مرات تخسر. فيه انفجارات وشرر واهتزاز شاشة، وأعلى نتيجة **تنحفظ**. اضغط `Esc` للإيقاف المؤقت.
 
 *Walk around and collect all 10 gems, jump on the crates, and zap the ghosts that chase you (aim at them and click). Everything has 8-bit sound and a win fanfare.*
 
@@ -137,6 +137,11 @@ game.run();
 | `useFirstPersonController(cfg)` | كاميرا مشي WASD + ماوس + قفز/جاذبية + تصادمات 3D |
 | `raycast(origin, dir, maxDist)` | يطلق شعاع ويرجع أقرب اصطدام `{distance, point, entity}` (بدون معاملات = من الكاميرا للأمام) |
 | `distanceToCamera(pos)` | مسافة (XZ) من اللاعب لنقطة |
+| `emitBurst(pos, {count,color,speed,life,size,gravity})` | رشّة جزيئات (انفجار/شرر) |
+| `shake(amount)` | اهتزاز شاشة لحظي |
+| `gameOver(message)` | ينهي اللعبة ويطلق `onStateChange('over', message)` |
+| `onStateChange(state, msg)` | يُستدعى عند `playing`/`paused`/`over` (للقوائم) |
+| `save(key, value)` / `load(key, fallback)` | حفظ/قراءة دائم (localStorage) لأعلى نتيجة |
 | `onGround` | هل اللاعب واقف على الأرض الآن؟ |
 | `g.input` / `g.audio` / `g.camera` / `g.scene` | وصول مباشر للأنظمة |
 | `run()` | يبدأ حلقة اللعبة |

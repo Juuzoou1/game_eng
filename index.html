@@ -87,6 +87,25 @@
     }
     #menu button:hover { background: #1a2a22; border-color: #4aff8a; transform: scale(1.04); }
     #menu button small { display: block; color: #6a7a90; font-size: 11px; letter-spacing: 1px; margin-top: 4px; }
+    /* In-game overlay for pause / game-over (managed by the launcher). */
+    #overlay {
+      position: absolute; inset: 0; z-index: 6;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background: rgba(5, 6, 12, 0.72);
+      font-family: "Courier New", monospace;
+    }
+    #overlay .msg {
+      color: #ffe089; font-size: 22px; letter-spacing: 2px; text-align: center;
+      white-space: pre-line; text-shadow: 0 0 8px rgba(255,200,80,0.6); line-height: 1.5;
+    }
+    #overlay .row { display: flex; gap: 14px; }
+    #overlay button {
+      padding: 12px 22px; font-family: inherit; font-size: 15px; letter-spacing: 2px;
+      color: #9ef0a0; background: #11151f; border: 2px solid #2a6a4a;
+      border-radius: 4px; cursor: pointer; text-shadow: 0 0 4px rgba(80,255,120,0.5);
+    }
+    #overlay button:hover { background: #1a2a22; border-color: #4aff8a; }
   </style>
 </head>
 <body>
@@ -101,6 +120,14 @@
     <p>one engine · two games · pick one</p>
     <button data-game="gems">💎 GEM COLLECTOR<small>explore · collect gems · zap ghosts</small></button>
     <button data-game="climb">🗼 TOWER CLIMB<small>jump up the tower · beat the clock</small></button>
+  </div>
+
+  <div id="overlay">
+    <div class="msg" id="overlay-msg"></div>
+    <div class="row">
+      <button id="btn-again">↻ PLAY AGAIN</button>
+      <button id="btn-menu">≡ MENU</button>
+    </div>
   </div>
 
   <script type="module" src="./src/main.js"></script>

@@ -27,9 +27,9 @@ import { Scene, Entity } from './scene.js';
 import { Mesh, buildCube, buildPlane, buildPyramid, buildQuad } from './mesh.js';
 import { TexGen, createTexture } from './textures.js';
 import { aabbFromCube, collide, groundHeightAt, raycastBoxes } from './physics.js';
-import { Vec3 } from './math.js';
+import { Vec3, Mat4 } from './math.js';
 
-export { TexGen, Vec3, Entity, buildCube, buildPlane, buildPyramid, buildQuad };
+export { TexGen, Vec3, Mat4, Entity, buildCube, buildPlane, buildPyramid, buildQuad };
 
 export class Engine {
   constructor(canvas, options = {}) {
@@ -47,30 +47,53 @@ export class Engine {
 
     this._solids = [];      // AABB colliders
     this._billboards = [];  // entities that always face the camera
+    this._particles = [];   // transient particle effects
     this._textures = {};    // name -> GL texture
     this._meshes = {};      // name -> Mesh
     this._fp = null;        // first-person controller config (or null)
+    this._shake = 0;        // screen-shake magnitude
+    this._everLocked = false;
+
+    // game state: 'playing' | 'paused' | 'over'
+    this.state = 'playing';
 
     // user hooks
     this.onStart = null;
     this.onUpdate = null;
+    this.onStateChange = null; // (state, message) => {}
 
     this._registerBuiltins();
 
-    // Audio must be unlocked by a user gesture.
-    canvas.addEventListener('click', () => this.audio.resume());
-
-    // Keep the canvas filling the window.
-    const fit = () => this.renderer.resize(window.innerWidth, window.innerHeight);
-    window.addEventListener('resize', fit);
-    fit();
+    // Bound listeners (kept so destroy() can remove them cleanly).
+    this._onResize = () => this.renderer.resize(window.innerWidth, window.innerHeight);
+    this._onClickAudio = () => this.audio.resume();
+    this._onLockChange = () => {
+      const locked = document.pointerLockElement === this.canvas;
+      if (locked) { this._everLocked = true; if (this.state === 'paused') this._setState('playing'); }
+      else if (this._everLocked && this.state === 'playing') this._setState('paused');
+    };
+    canvas.addEventListener('click', this._onClickAudio);
+    window.addEventListener('resize', this._onResize);
+    document.addEventListener('pointerlockchange', this._onLockChange);
+    this._onResize();
   }
+
+  _setState(state, message = '') {
+    this.state = state;
+    // Release the mouse on game-over so the player can click the overlay buttons.
+    if (state === 'over' && document.pointerLockElement === this.canvas) document.exitPointerLock();
+    if (this.onStateChange) this.onStateChange(state, message);
+  }
+
+  // End the game with a result message (shows the overlay via onStateChange).
+  gameOver(message = 'GAME OVER') { this._setState('over', message); }
 
   _registerBuiltins() {
     this.defineMesh('cube', buildCube(1));
     this.defineMesh('plane', buildPlane(1, 1));
     this.defineMesh('pyramid', buildPyramid(1));
     this.defineMesh('quad', buildQuad()); // for billboard sprites
+    this.defineTexture('white', '#ffffff'); // for tinted particles
   }
 
   // --- asset registration -------------------------------------------------
@@ -149,6 +172,74 @@ export class Engine {
     if (!origin) origin = this.camera.position;
     if (!dir) dir = Vec3.normalize(this.camera.forward());
     return raycastBoxes(origin, dir, this._solids, maxDist);
+  }
+
+  // --- juice: particles, screen shake -------------------------------------
+
+  // Spit out a burst of particles at a world position.
+  emitBurst(pos, opts = {}) {
+    const count = opts.count ?? 12;
+    const color = opts.color ?? [1, 1, 1];
+    const speed = opts.speed ?? 4;
+    const life = opts.life ?? 0.5;
+    const size = opts.size ?? 0.15;
+    const gravity = opts.gravity ?? 8;
+    for (let i = 0; i < count; i++) {
+      // random direction, biased slightly upward
+      let d = [Math.random() * 2 - 1, Math.random() * 2 - 0.4, Math.random() * 2 - 1];
+      d = Vec3.normalize(d);
+      const sp = speed * (0.4 + Math.random() * 0.6);
+      this._particles.push({
+        pos: [pos[0], pos[1], pos[2]],
+        vel: [d[0] * sp, d[1] * sp, d[2] * sp],
+        life, maxLife: life, size, gravity, color,
+      });
+    }
+  }
+
+  // Kick the camera for a moment (impact feedback). amount in world units.
+  shake(amount = 0.25) { this._shake = Math.max(this._shake, amount); }
+
+  _updateParticles(dt) {
+    const ps = this._particles;
+    for (let i = ps.length - 1; i >= 0; i--) {
+      const p = ps[i];
+      p.life -= dt;
+      if (p.life <= 0) { ps.splice(i, 1); continue; }
+      p.vel[1] -= p.gravity * dt;
+      p.pos[0] += p.vel[0] * dt;
+      p.pos[1] += p.vel[1] * dt;
+      p.pos[2] += p.vel[2] * dt;
+    }
+  }
+
+  _renderParticles() {
+    if (!this._particles.length) return;
+    const quad = this._meshes.quad;
+    const white = this._textures.white;
+    const yaw = this.camera.yaw + Math.PI;
+    const rotY = Mat4.rotationY(yaw);
+    for (const p of this._particles) {
+      const s = p.size * (p.life / p.maxLife); // shrink as it dies
+      let m = Mat4.multiply(Mat4.translation(p.pos[0], p.pos[1], p.pos[2]), rotY);
+      m = Mat4.multiply(m, Mat4.scaling(s, s, s));
+      // center the quad on the point (quad spans y[0,1], x[-0.5,0.5])
+      m = Mat4.multiply(m, Mat4.translation(0, -0.5, 0));
+      this.renderer.drawMesh(quad, m, Mat4.normalFromMat4(m), white, p.color);
+    }
+  }
+
+  // --- tiny persistence helper (high scores, etc.) ------------------------
+
+  save(key, value) {
+    try { localStorage.setItem('retropsx:' + key, JSON.stringify(value)); } catch (e) { /* ignore */ }
+  }
+
+  load(key, fallback = null) {
+    try {
+      const v = localStorage.getItem('retropsx:' + key);
+      return v == null ? fallback : JSON.parse(v);
+    } catch (e) { return fallback; }
   }
 
   // --- built-in first-person controller (optional) ------------------------
@@ -239,26 +330,46 @@ export class Engine {
 
   run() {
     if (this.onStart) this.onStart(this);
+    this._running = true;
 
     let last = performance.now();
     let frames = 0, acc = 0;
 
     const loop = (now) => {
+      if (!this._running) return; // stopped by destroy()
       this.dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      this.time += this.dt;
 
-      if (this._fp) this._updateFirstPerson(this.dt);
-      if (this.onUpdate) this.onUpdate(this, this.dt);
-      this.scene.update(this.dt, this.time);
+      // Gameplay only advances while playing; paused/over freezes the world.
+      if (this.state === 'playing') {
+        this.time += this.dt;
+        if (this._fp) this._updateFirstPerson(this.dt);
+        if (this.onUpdate) this.onUpdate(this, this.dt);
+        this.scene.update(this.dt, this.time);
+        this._updateParticles(this.dt);
+      }
 
-      // Turn every billboard to face the camera (cylindrical, Y-axis only).
+      // Billboards always face the camera (cylindrical, Y-axis only).
       const faceYaw = this.camera.yaw + Math.PI;
       for (const e of this._billboards) e.rotation[1] = faceYaw;
 
+      // Screen shake: nudge the camera, render, then restore.
+      let ox = 0, oz = 0;
+      if (this._shake > 0.001) {
+        ox = (Math.random() * 2 - 1) * this._shake;
+        oz = (Math.random() * 2 - 1) * this._shake;
+        this.camera.position[0] += ox;
+        this.camera.position[2] += oz;
+        this._shake *= 0.86;
+      } else this._shake = 0;
+
       this.renderer.beginScene(this.camera);
       this.scene.render(this.renderer);
+      this._renderParticles();
       this.renderer.endScene();
+
+      this.camera.position[0] -= ox;
+      this.camera.position[2] -= oz;
 
       frames++;
       acc += this.dt;
@@ -267,5 +378,16 @@ export class Engine {
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
+  }
+
+  // Stop the loop and remove all listeners so the engine can be discarded
+  // (used to restart cleanly into a fresh game without stacking listeners).
+  destroy() {
+    this._running = false;
+    window.removeEventListener('resize', this._onResize);
+    document.removeEventListener('pointerlockchange', this._onLockChange);
+    this.canvas.removeEventListener('click', this._onClickAudio);
+    this.input.destroy();
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
   }
 }

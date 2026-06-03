@@ -34,6 +34,7 @@ export function createGame(canvas, ui = {}) {
   let goal = null;
   let won = false;
   let time = 0;
+  const best = game.load('climb:best', null); // best (fastest) time in seconds
 
   game.onStart = (g) => {
     g.spawn({ mesh: 'ground', texture: 'floor' });
@@ -69,19 +70,26 @@ export function createGame(canvas, ui = {}) {
     // reached the gem? (full 3D distance)
     if (!won && goal) {
       const to = Vec3.sub(goal.position, g.camera.position);
-      if (Vec3.length(to) < 2.0) { won = true; g.audio.win(); }
+      if (Vec3.length(to) < 2.0) {
+        won = true;
+        g.audio.win();
+        g.emitBurst(goal.position, { color: [0.4, 1, 1], count: 30, speed: 5, life: 0.8, size: 0.18, gravity: 4 });
+        g.shake(0.3);
+        const isBest = best == null || time < best;
+        if (isBest) game.save('climb:best', +time.toFixed(1));
+        const bestTxt = `best ${(isBest ? time : best).toFixed(1)}s`;
+        game.gameOver(`YOU REACHED THE TOP!\ntime ${time.toFixed(1)}s · ${bestTxt}${isBest ? ' (NEW!)' : ''}`);
+      }
     }
 
     if (ui.score) {
       const h = Math.max(0, g.camera.position[1] - 1.6).toFixed(1);
-      ui.score.textContent = won ? '★ YOU REACHED THE TOP! ★' : `TIME ${time.toFixed(1)}s · H ${h}m`;
+      ui.score.textContent = `TIME ${time.toFixed(1)}s · H ${h}m${best != null ? ` · best ${best}s` : ''}`;
     }
     if (ui.hud) {
-      ui.hud.textContent = won
-        ? `DONE in ${time.toFixed(1)}s — refresh to retry`
-        : g.input.locked
-          ? `${g.fps} FPS · WASD + Space · jump up the tower to the gem!`
-          : `CLICK TO PLAY · climb the tower, reach the gem at the top!`;
+      ui.hud.textContent = g.input.locked
+        ? `${g.fps} FPS · WASD + Space · jump up the tower to the gem!`
+        : `CLICK TO PLAY · climb the tower, reach the gem at the top!`;
     }
   };
 

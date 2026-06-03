@@ -9,32 +9,33 @@ export class Input {
 
     // Keys that would otherwise scroll the page — swallow them while playing.
     const swallow = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
-    window.addEventListener('keydown', (e) => {
-      this.keys[e.code] = true;
-      if (swallow.has(e.code)) e.preventDefault();
-    });
-    window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+    // Handlers kept as fields so destroy() can remove them.
+    this._h = {
+      keydown: (e) => { this.keys[e.code] = true; if (swallow.has(e.code)) e.preventDefault(); },
+      keyup: (e) => { this.keys[e.code] = false; },
+      click: () => { if (!this.locked) canvas.requestPointerLock(); },
+      lock: () => { this.locked = document.pointerLockElement === canvas; },
+      mousemove: (e) => { if (this.locked) { this.mouseDX += e.movementX; this.mouseDY += e.movementY; } },
+      // The click that grabs pointer lock doesn't count as a shot (locked is
+      // still false at that moment).
+      mousedown: (e) => { if (this.locked && e.button === 0) this._clicked = true; },
+    };
+    this._canvas = canvas;
+    window.addEventListener('keydown', this._h.keydown);
+    window.addEventListener('keyup', this._h.keyup);
+    canvas.addEventListener('click', this._h.click);
+    document.addEventListener('pointerlockchange', this._h.lock);
+    document.addEventListener('mousemove', this._h.mousemove);
+    document.addEventListener('mousedown', this._h.mousedown);
+  }
 
-    canvas.addEventListener('click', () => {
-      if (!this.locked) canvas.requestPointerLock();
-    });
-
-    document.addEventListener('pointerlockchange', () => {
-      this.locked = document.pointerLockElement === canvas;
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (this.locked) {
-        this.mouseDX += e.movementX;
-        this.mouseDY += e.movementY;
-      }
-    });
-
-    // Left-click while playing (used for shooting). The click that grabs the
-    // pointer lock doesn't count, since `locked` is still false at that point.
-    document.addEventListener('mousedown', (e) => {
-      if (this.locked && e.button === 0) this._clicked = true;
-    });
+  destroy() {
+    window.removeEventListener('keydown', this._h.keydown);
+    window.removeEventListener('keyup', this._h.keyup);
+    this._canvas.removeEventListener('click', this._h.click);
+    document.removeEventListener('pointerlockchange', this._h.lock);
+    document.removeEventListener('mousemove', this._h.mousemove);
+    document.removeEventListener('mousedown', this._h.mousedown);
   }
 
   // True once per left-click; consumes the event.

@@ -39,9 +39,19 @@ export function createGame(canvas, ui = {}) {
   let gems = [];
   let total = 0;
   let collected = 0;
-  let won = false;
   let ghosts = [];   // chasing enemies (billboard sprites)
   let zapped = 0;
+  let health = 3;    // hearts
+  let over = false;
+  const best = game.load('gems:best', 0); // persistent high score (gems collected)
+
+  function finish(win) {
+    if (over) return;
+    over = true;
+    if (collected > best) game.save('gems:best', collected);
+    const line = win ? `YOU GOT ALL ${total} GEMS!` : 'THE GHOSTS GOT YOU';
+    game.gameOver(`${line}\ngems ${collected}/${total} · zapped ${zapped} · best ${Math.max(best, collected)}`);
+  }
 
   const randomEdge = () => {
     const a = Math.random() * Math.PI * 2;
@@ -119,12 +129,14 @@ export function createGame(canvas, ui = {}) {
   game.onUpdate = (g) => {
     // collect gems you walk into
     for (let i = gems.length - 1; i >= 0; i--) {
-      if (g.distanceToCamera(gems[i].position) < 1.2) {
+      const gp = gems[i].position;
+      if (g.distanceToCamera(gp) < 1.2) {
+        g.emitBurst([gp[0], gp[1], gp[2]], { color: [0.4, 1, 1], count: 14, speed: 3, life: 0.5, size: 0.12 });
         g.despawn(gems[i]);
         gems.splice(i, 1);
         collected++;
         g.audio.pickup();
-        if (collected === total && !won) { won = true; g.audio.win(); }
+        if (collected === total) { g.audio.win(); finish(true); }
       }
     }
 
@@ -140,8 +152,11 @@ export function createGame(canvas, ui = {}) {
       }
       if (dist < 1.1) {
         g.audio.hurt();
+        g.shake(0.35);
+        health--;
         const [ex, ez] = randomEdge();   // knock it back to an edge
         p[0] = ex; p[2] = ez;
+        if (health <= 0) { finish(false); return; }
       }
     }
 
@@ -157,6 +172,9 @@ export function createGame(canvas, ui = {}) {
         if (d > bestDot) { bestDot = d; best = gh; }
       }
       if (best) {
+        const bp = best.entity.position;
+        g.emitBurst([bp[0], bp[1] + 0.9, bp[2]], { color: [1, 0.7, 0.2], count: 18, speed: 5, life: 0.5, size: 0.16 });
+        g.shake(0.12);
         g.despawn(best.entity);
         ghosts = ghosts.filter((x) => x !== best);
         zapped++;
@@ -175,14 +193,13 @@ export function createGame(canvas, ui = {}) {
     }
 
     if (ui.score) {
-      ui.score.textContent = won
-        ? `★ ALL ${total} GEMS! ★`
-        : `GEMS ${collected}/${total}   👻 ${ghosts.length}`;
+      ui.score.textContent =
+        `${'❤'.repeat(health)}   GEMS ${collected}/${total}   👻 ${ghosts.length}`;
     }
     if (ui.hud) {
       ui.hud.textContent = g.input.locked
-        ? `${g.fps} FPS · WASD move · Space jump · CLICK to zap ghosts · aim:${aimText}`
-        : `CLICK TO PLAY · grab gems · jump crates · click to zap the ghosts!`;
+        ? `${g.fps} FPS · WASD · Space jump · CLICK zap · best ${best} · aim:${aimText}`
+        : `CLICK TO PLAY · grab gems · jump crates · zap ghosts · don't get caught!`;
     }
   };
 

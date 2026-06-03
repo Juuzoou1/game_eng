@@ -67,40 +67,78 @@ The vintage feel comes from intentionally emulating PS1 hardware limits:
 ## بنية المشروع / Project structure
 
 ```
-index.html        صفحة الدخول + ستايل الـ CRT
+index.html              صفحة الدخول + ستايل الـ CRT
 src/
-  math.js         vec3 و mat4 (بدون مكتبات)
-  textures.js     زخارف تُرسم برمجياً (طوب، معدن، صناديق، عشب، مجوهرات…)
-  mesh.js         مكعب / مستوى / هرم
-  renderer.js     قلب المحرك: شيدرات PS1 + بفر منخفض + ديذرنق
-  camera.js       كاميرا منظور أول
-  input.js        كيبورد + قفل الماوس
-  physics.js      تصادمات AABB (دائرة اللاعب ضد الصناديق)
-  audio.js        أصوات 8-bit مولّدة برمجياً (Web Audio)
-  scene.js        كيانات (entities) ومصفوفات التحويل
-  main.js         تجميع كل شي + بناء المستوى وحلقة اللعب
+  main.js               مُشغّل: يختار لعبة ويشغّلها
+  engine/               ★ نواة المحرك (قابلة لإعادة الاستخدام) ★
+    engine.js           الواجهة البرمجية: Engine — تربط كل شي
+    renderer.js         الراسم: شيدرات PS1 + بفر منخفض + ديذرنق
+    math.js             vec3 و mat4 (بدون مكتبات)
+    mesh.js             بنّاءات المجسمات: مكعب / مستوى / هرم
+    textures.js         زخارف تُرسم برمجياً
+    camera.js           كاميرا منظور أول
+    input.js            كيبورد + قفل الماوس
+    physics.js          تصادمات AABB
+    audio.js            أصوات 8-bit (Web Audio)
+    scene.js            الكيانات (entities) والتحويلات
+  games/                ألعاب مبنية فوق المحرك
+    gem-collector.js    لعبة المثال (لا تستخدم إلا واجهة المحرك)
 ```
+
+**الفكرة:** كل شي تحت `engine/` هو المحرك العام. الألعاب تحت `games/` تُبنى فوقه بدون ما تلمس داخليّاته.
 
 ---
 
-## تضيف أشياء جديدة / Adding things
+## تصمّم لعبتك / Make your own game
 
-عشان تضيف مجسم جديد للمشهد:
+اللعبة كاملة تتكتب بواجهة `Engine` فقط. مثال أدنى لعبة ممكنة:
 
 ```js
-scene.add(new Entity({
-  mesh: mesh.cube,
-  texture: tex.brick,
-  position: [2, 0.5, -3],
-  rotation: [0, 0.4, 0],
-  scale: [1, 1, 1],
-  // اختياري: تحديث كل فريم
-  update: (e, dt, time) => { e.rotation[1] += dt; },
-}));
+import { Engine, TexGen } from './engine/engine.js';
+
+const game = new Engine(document.getElementById('game'), { width: 320, height: 240 });
+
+// 1) سجّل الأصول (زخارف، مجسمات)
+game.defineTexture('floor', TexGen.checker());
+game.defineTexture('wall', TexGen.brick());
+
+// 2) فعّل كاميرا المشي الجاهزة (مع تصادمات تلقائية)
+game.useFirstPersonController({ bounds: 20 });
+
+// 3) ابنِ المستوى
+game.onStart = (g) => {
+  g.spawn({ mesh: 'plane', texture: 'floor', scale: [40, 1, 40] });
+  g.spawn({ mesh: 'cube', texture: 'wall', position: [0, 0.5, -5], solid: true });
+};
+
+// 4) منطق كل فريم
+game.onUpdate = (g, dt) => {
+  // مثال: شِف قرب اللاعب من نقطة
+  // if (g.distanceToCamera([0,0,-5]) < 2) { ... }
+};
+
+game.run();
 ```
 
-تبي زخرفة جديدة؟ زِد دالة في `src/textures.js` ترجع `<canvas>`، وحمّلها بـ `createTexture(gl, ...)`.
+### أهم دوال الـ Engine API
+
+| الدالة | الوظيفة |
+|---|---|
+| `defineTexture(name, canvas\|color)` | تسجّل زخرفة (من `<canvas>` أو لون CSS) |
+| `defineMesh(name, {vertices,indices})` | تسجّل مجسم مخصّص |
+| `spawn({mesh, texture, position, rotation, scale, tint, update, solid})` | تنشئ كياناً؛ `solid:true` يضيف تصادم |
+| `despawn(entity)` | تحذف كياناً (وتصادمه) |
+| `useFirstPersonController(cfg)` | كاميرا مشي WASD + ماوس مع تصادمات |
+| `collide(x, z, r)` | تحلّ تصادم دائرة ضد كل العوائق |
+| `distanceToCamera(pos)` | مسافة (XZ) من اللاعب لنقطة |
+| `g.input` / `g.audio` / `g.camera` / `g.scene` | وصول مباشر للأنظمة |
+| `run()` | يبدأ حلقة اللعبة |
+
+المجسمات الجاهزة: `'cube'` · `'plane'` · `'pyramid'`.
+الزخارف الجاهزة في `TexGen`: `checker` · `brick` · `metal` · `crate` · `grass` · `gem`.
+
+عشان تشغّل لعبتك، عدّل `src/main.js` ليستورد لعبتك بدل `gem-collector`.
 
 ---
 
-استمتع! 🎮  Built as a from-scratch learning engine — no frameworks, ~700 lines.
+استمتع! 🎮  Built from scratch — no frameworks, no engine libraries.

@@ -64,14 +64,45 @@
       pointer-events: none;
       opacity: 0.8;
     }
+    /* Game-select menu — shows that one engine runs many games. */
+    #menu {
+      position: absolute; inset: 0; z-index: 5;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+      background: radial-gradient(ellipse at center, #0a0c18, #05060c);
+      font-family: "Courier New", monospace;
+    }
+    #menu h1 {
+      color: #7fd4ff; font-size: 28px; letter-spacing: 4px;
+      text-shadow: 0 0 10px rgba(80,180,255,0.7); margin-bottom: 4px;
+    }
+    #menu p { color: #6a7a90; font-size: 13px; margin-bottom: 14px; letter-spacing: 1px; }
+    #menu button {
+      width: 280px; padding: 14px;
+      font-family: inherit; font-size: 16px; letter-spacing: 2px;
+      color: #9ef0a0; background: #11151f;
+      border: 2px solid #2a6a4a; border-radius: 4px;
+      cursor: pointer; transition: all 0.12s;
+      text-shadow: 0 0 4px rgba(80,255,120,0.5);
+    }
+    #menu button:hover { background: #1a2a22; border-color: #4aff8a; transform: scale(1.04); }
+    #menu button small { display: block; color: #6a7a90; font-size: 11px; letter-spacing: 1px; margin-top: 4px; }
   </style>
 </head>
 <body>
   <canvas id="game"></canvas>
   <div id="crt"></div>
   <div id="title">★ RETRO-PSX ENGINE ★</div>
-  <div id="score">GEMS 0 / 10</div>
+  <div id="score"></div>
   <div id="hud">CLICK TO PLAY</div>
+
+  <div id="menu">
+    <h1>★ RETRO-PSX ★</h1>
+    <p>one engine · two games · pick one</p>
+    <button data-game="gems">💎 GEM COLLECTOR<small>explore · collect gems · zap ghosts</small></button>
+    <button data-game="climb">🗼 TOWER CLIMB<small>jump up the tower · beat the clock</small></button>
+  </div>
+
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

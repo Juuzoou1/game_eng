@@ -43,6 +43,11 @@ export class Audio {
     this._blip(110 + Math.random() * 20, 0.06, 'triangle', 0.06, 70);
   }
 
+  // Rising "boing" for a jump.
+  jump() {
+    this._blip(320, 0.14, 'square', 0.12, 620);
+  }
+
   // Rising fanfare when all gems are collected.
   win() {
     const notes = [523, 659, 784, 1046];

@@ -43,8 +43,11 @@ http://localhost:8000
 |---|---|
 | `W` `A` `S` `D` | المشي / move |
 | الماوس / Mouse | النظر / look around |
+| `Space` | القفز / jump (اقفز فوق الصناديق!) |
 | `Shift` | الركض / run |
 | `Esc` | تحرير الماوس / release mouse |
+
+> 💡 وجّه نظرك على صندوق أو عمود وبيتوهّج بالأحمر — هذا الـ **Raycasting** يشتغل (المحرك يعرف وش تنظر له ومسافته).
 
 ---
 
@@ -128,9 +131,10 @@ game.run();
 | `defineMesh(name, {vertices,indices})` | تسجّل مجسم مخصّص |
 | `spawn({mesh, texture, position, rotation, scale, tint, update, solid})` | تنشئ كياناً؛ `solid:true` يضيف تصادم |
 | `despawn(entity)` | تحذف كياناً (وتصادمه) |
-| `useFirstPersonController(cfg)` | كاميرا مشي WASD + ماوس مع تصادمات |
-| `collide(x, z, r)` | تحلّ تصادم دائرة ضد كل العوائق |
+| `useFirstPersonController(cfg)` | كاميرا مشي WASD + ماوس + قفز/جاذبية + تصادمات 3D |
+| `raycast(origin, dir, maxDist)` | يطلق شعاع ويرجع أقرب اصطدام `{distance, point, entity}` (بدون معاملات = من الكاميرا للأمام) |
 | `distanceToCamera(pos)` | مسافة (XZ) من اللاعب لنقطة |
+| `onGround` | هل اللاعب واقف على الأرض الآن؟ |
 | `g.input` / `g.audio` / `g.camera` / `g.scene` | وصول مباشر للأنظمة |
 | `run()` | يبدأ حلقة اللعبة |
 

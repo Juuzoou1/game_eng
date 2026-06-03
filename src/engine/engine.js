@@ -26,7 +26,7 @@ import { Audio } from './audio.js';
 import { Scene, Entity } from './scene.js';
 import { Mesh, buildCube, buildPlane, buildPyramid } from './mesh.js';
 import { TexGen, createTexture } from './textures.js';
-import { aabbFromCube, collide } from './physics.js';
+import { aabbFromCube, collide, groundHeightAt, raycastBoxes } from './physics.js';
 import { Vec3 } from './math.js';
 
 export { TexGen, Vec3, Entity, buildCube, buildPlane, buildPyramid };
@@ -112,7 +112,7 @@ export class Engine {
     const entity = new Entity({ ...opts, mesh, texture });
     this.scene.add(entity);
     if (opts.solid) {
-      entity._collider = aabbFromCube(entity, opts.colliderPad ?? 0.3);
+      entity._collider = aabbFromCube(entity);
       this._solids.push(entity._collider);
     }
     return entity;
@@ -126,16 +126,19 @@ export class Engine {
     }
   }
 
-  // Resolve a circle (x,z,radius) against all solids. Returns [x, z].
-  collide(x, z, radius) {
-    return collide(x, z, radius, this._solids);
-  }
-
   // Distance (XZ) from the camera to a world position — handy for pickups/AI.
   distanceToCamera(pos) {
     const dx = pos[0] - this.camera.position[0];
     const dz = pos[2] - this.camera.position[2];
     return Math.hypot(dx, dz);
+  }
+
+  // Cast a ray against all solids. Pass origin+dir, or omit to shoot from the
+  // camera along where you're looking. Returns { distance, point, entity } | null.
+  raycast(origin, dir, maxDist = Infinity) {
+    if (!origin) origin = this.camera.position;
+    if (!dir) dir = Vec3.normalize(this.camera.forward());
+    return raycastBoxes(origin, dir, this._solids, maxDist);
   }
 
   // --- built-in first-person controller (optional) ------------------------
@@ -146,50 +149,80 @@ export class Engine {
       runSpeed: cfg.runSpeed ?? 9,
       eyeHeight: cfg.eyeHeight ?? 1.6,
       radius: cfg.radius ?? 0.3,
+      height: cfg.height ?? 1.6,     // body height for collision
       bounds: cfg.bounds ?? 28,
-      onStep: cfg.onStep ?? null, // callback for footstep sfx, etc.
+      gravity: cfg.gravity ?? 24,
+      jumpSpeed: cfg.jumpSpeed ?? 8.5,
+      onStep: cfg.onStep ?? null,    // footstep callback
+      onJump: cfg.onJump ?? null,    // jump callback (for sfx)
+      // runtime state
+      feetY: this.camera.position[1] - (cfg.eyeHeight ?? 1.6),
+      vy: 0,
+      onGround: true,
       stepTimer: 0,
     };
     return this;
   }
 
+  // Is the player currently standing on the ground/a surface?
+  get onGround() { return this._fp ? this._fp.onGround : true; }
+
   _updateFirstPerson(dt) {
     const fp = this._fp;
+    const cam = this.camera;
     const [dx, dy] = this.input.consumeMouse();
-    this.camera.look(dx, dy);
+    cam.look(dx, dy);
 
+    // --- horizontal movement ---
     const running = this.input.down('ShiftLeft');
     const speed = (running ? fp.runSpeed : fp.speed) * dt;
-    const f = this.camera.forward();
+    const f = cam.forward();
     const flat = Vec3.normalize([f[0], 0, f[2]]);
-    const right = this.camera.right();
+    const right = cam.right();
     let move = [0, 0, 0];
     if (this.input.down('KeyW')) move = Vec3.add(move, flat);
     if (this.input.down('KeyS')) move = Vec3.sub(move, flat);
     if (this.input.down('KeyD')) move = Vec3.sub(move, right);
     if (this.input.down('KeyA')) move = Vec3.add(move, right);
 
-    if (Vec3.length(move) > 0) {
+    const moving = Vec3.length(move) > 0;
+    if (moving) {
       move = Vec3.scale(Vec3.normalize(move), speed);
-      let nx = this.camera.position[0] + move[0];
-      let nz = this.camera.position[2] + move[2];
-      [nx, nz] = this.collide(nx, nz, fp.radius);
-      this.camera.position[0] = nx;
-      this.camera.position[2] = nz;
-
-      if (fp.onStep) {
+      let nx = cam.position[0] + move[0];
+      let nz = cam.position[2] + move[2];
+      [nx, nz] = collide(nx, nz, fp.radius, fp.feetY, fp.height, this._solids);
+      cam.position[0] = nx;
+      cam.position[2] = nz;
+      if (fp.onGround && fp.onStep) {
         fp.stepTimer -= dt;
-        if (fp.stepTimer <= 0) {
-          fp.onStep(running);
-          fp.stepTimer = running ? 0.28 : 0.42;
-        }
+        if (fp.stepTimer <= 0) { fp.onStep(running); fp.stepTimer = running ? 0.28 : 0.42; }
       }
     }
 
-    this.camera.position[1] = fp.eyeHeight;
     const b = fp.bounds;
-    this.camera.position[0] = Math.max(-b, Math.min(b, this.camera.position[0]));
-    this.camera.position[2] = Math.max(-b, Math.min(b, this.camera.position[2]));
+    cam.position[0] = Math.max(-b, Math.min(b, cam.position[0]));
+    cam.position[2] = Math.max(-b, Math.min(b, cam.position[2]));
+
+    // --- jumping / gravity (vertical) ---
+    if (this.input.down('Space') && fp.onGround) {
+      fp.vy = fp.jumpSpeed;
+      fp.onGround = false;
+      if (fp.onJump) fp.onJump();
+    }
+    fp.vy -= fp.gravity * dt;
+    fp.feetY += fp.vy * dt;
+
+    const floorY = groundHeightAt(
+      cam.position[0], cam.position[2], fp.radius, fp.feetY, this._solids);
+    if (fp.feetY <= floorY) {
+      fp.feetY = floorY;
+      fp.vy = 0;
+      fp.onGround = true;
+    } else {
+      fp.onGround = false;
+    }
+
+    cam.position[1] = fp.feetY + fp.eyeHeight;
   }
 
   // --- main loop ----------------------------------------------------------

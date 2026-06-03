@@ -6,7 +6,12 @@ export class Input {
     this.mouseDY = 0;
     this.locked = false;
 
-    window.addEventListener('keydown', (e) => { this.keys[e.code] = true; });
+    // Keys that would otherwise scroll the page — swallow them while playing.
+    const swallow = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+    window.addEventListener('keydown', (e) => {
+      this.keys[e.code] = true;
+      if (swallow.has(e.code)) e.preventDefault();
+    });
     window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
 
     canvas.addEventListener('click', () => {

@@ -27,10 +27,11 @@ export function createGame(canvas, ui = {}) {
   // a big ground mesh whose texture tiles 30x (instead of stretching)
   game.defineMesh('ground', buildPlane(60, 30));
 
-  // --- use the engine's built-in walking controller, with footstep sfx ---
+  // --- use the engine's built-in walking controller, with footstep + jump sfx ---
   game.useFirstPersonController({
     bounds: 28,
     onStep: () => game.audio.step(),
+    onJump: () => game.audio.jump(),
   });
 
   // game state
@@ -93,8 +94,11 @@ export function createGame(canvas, ui = {}) {
     total = gems.length;
   };
 
+  let aimed = null; // the solid the player is currently looking at
+
   // --- per-frame game logic ---
   game.onUpdate = (g) => {
+    // collect gems you walk into
     for (let i = gems.length - 1; i >= 0; i--) {
       if (g.distanceToCamera(gems[i].position) < 1.2) {
         g.despawn(gems[i]);
@@ -105,6 +109,16 @@ export function createGame(canvas, ui = {}) {
       }
     }
 
+    // RAYCAST demo: highlight whatever solid you're aiming at (within 12 units)
+    if (aimed) { aimed.tint = [1, 1, 1]; aimed = null; }
+    const hit = g.raycast(null, null, 12);
+    let aimText = '—';
+    if (hit && hit.entity) {
+      aimed = hit.entity;
+      aimed.tint = [1.6, 0.7, 0.7];           // glow red
+      aimText = `${hit.distance.toFixed(1)}m`;
+    }
+
     if (ui.score) {
       ui.score.textContent = won
         ? `★ ALL ${total} GEMS! ★`
@@ -112,8 +126,8 @@ export function createGame(canvas, ui = {}) {
     }
     if (ui.hud) {
       ui.hud.textContent = g.input.locked
-        ? `${g.fps} FPS  ·  WASD move · Shift run · Esc release mouse`
-        : `CLICK TO PLAY  ·  collect all the gems!`;
+        ? `${g.fps} FPS · WASD move · Space jump · Shift run · aim:${aimText}`
+        : `CLICK TO PLAY · collect the gems · jump on the crates!`;
     }
   };
 

@@ -99,6 +99,33 @@ export const TexGen = {
     return cv;
   },
 
+  gem(size = 64) {
+    const cv = makeCanvas(size);
+    const ctx = cv.getContext('2d');
+    // faceted crystal look: bright facets on a teal body
+    ctx.fillStyle = '#0a3a44';
+    ctx.fillRect(0, 0, size, size);
+    const facets = [
+      ['#2ad0e0', [0.5, 0.0, 1.0, 0.5, 0.5, 1.0]],
+      ['#16a0b4', [0.5, 0.0, 0.0, 0.5, 0.5, 1.0]],
+      ['#8ff4ff', [0.5, 0.0, 0.7, 0.35, 0.5, 0.5]],
+      ['#1d8ea0', [0.5, 1.0, 0.0, 0.5, 0.5, 0.5]],
+    ];
+    for (const [color, t] of facets) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(t[0] * size, t[1] * size);
+      ctx.lineTo(t[2] * size, t[3] * size);
+      ctx.lineTo(t[4] * size, t[5] * size);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // sparkle
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(size * 0.55, size * 0.2, 3, 3);
+    return cv;
+  },
+
   grass(size = 64) {
     const cv = makeCanvas(size);
     const ctx = cv.getContext('2d');

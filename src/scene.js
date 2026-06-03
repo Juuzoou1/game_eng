@@ -34,6 +34,11 @@ export class Scene {
     return entity;
   }
 
+  remove(entity) {
+    const i = this.entities.indexOf(entity);
+    if (i >= 0) this.entities.splice(i, 1);
+  }
+
   update(dt, time) {
     for (const e of this.entities) {
       if (e.update) e.update(e, dt, time);

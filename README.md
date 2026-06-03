@@ -31,6 +31,12 @@ http://localhost:8000
 **اضغط على الشاشة** عشان يقفل الماوس وتبدأ تلعب.
 **Click the screen** to lock the mouse and start playing.
 
+### اللعب / Gameplay
+
+تمشّى في الساحة و**اجمع كل المجوهرات العشر** 💎. ما تقدر تعدّي الصناديق ولا الأعمدة (في تصادمات)، وكل شي له صوت ريترو 8-bit. أول ما تجمعهم كلهم تطلع لك نغمة فوز.
+
+*Walk around and collect all 10 gems. Crates and pillars are solid (collision), everything has 8-bit sound, and a fanfare plays when you grab them all.*
+
 ### التحكم / Controls
 
 | المفتاح / Key | الوظيفة / Action |
@@ -64,13 +70,15 @@ The vintage feel comes from intentionally emulating PS1 hardware limits:
 index.html        صفحة الدخول + ستايل الـ CRT
 src/
   math.js         vec3 و mat4 (بدون مكتبات)
-  textures.js     زخارف تُرسم برمجياً (طوب، معدن، صناديق، عشب…)
+  textures.js     زخارف تُرسم برمجياً (طوب، معدن، صناديق، عشب، مجوهرات…)
   mesh.js         مكعب / مستوى / هرم
   renderer.js     قلب المحرك: شيدرات PS1 + بفر منخفض + ديذرنق
   camera.js       كاميرا منظور أول
   input.js        كيبورد + قفل الماوس
+  physics.js      تصادمات AABB (دائرة اللاعب ضد الصناديق)
+  audio.js        أصوات 8-bit مولّدة برمجياً (Web Audio)
   scene.js        كيانات (entities) ومصفوفات التحويل
-  main.js         تجميع كل شي + بناء المستوى التجريبي
+  main.js         تجميع كل شي + بناء المستوى وحلقة اللعب
 ```
 
 ---

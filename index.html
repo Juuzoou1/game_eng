@@ -47,6 +47,14 @@
       pointer-events: none;
       z-index: 3;
     }
+    #score {
+      position: absolute; top: 12px; right: 16px;
+      z-index: 3;
+      color: #ffe089;
+      font-size: 18px; font-weight: bold; letter-spacing: 2px;
+      text-shadow: 0 0 6px rgba(255,200,80,0.7);
+      pointer-events: none;
+    }
     #title {
       position: absolute; top: 14px; left: 0; right: 0;
       text-align: center; z-index: 3;
@@ -62,6 +70,7 @@
   <canvas id="game"></canvas>
   <div id="crt"></div>
   <div id="title">★ RETRO-PSX ENGINE ★</div>
+  <div id="score">GEMS 0 / 10</div>
   <div id="hud">CLICK TO PLAY</div>
   <script type="module" src="./src/main.js"></script>
 </body>

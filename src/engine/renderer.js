@@ -75,6 +75,8 @@ varying vec3 vLight;
 void main() {
   vec2 uv = vUV / vW;                 // affine: divide back out
   vec4 tex = texture2D(uTex, uv);
+  // Color-key cutout: pure magenta marks transparent sprite pixels (PS1-style).
+  if (tex.a < 0.5 || (tex.r > 0.8 && tex.g < 0.2 && tex.b > 0.8)) discard;
   vec3 col = tex.rgb * vLight * uTint;
 
   // crush the color depth a little (15-bit-ish) for retro banding

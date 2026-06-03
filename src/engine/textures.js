@@ -126,6 +126,31 @@ export const TexGen = {
     return cv;
   },
 
+  // A blocky ghost SPRITE for billboards. Drawn as hard-edged pixel art on a
+  // pure-magenta background; the renderer color-keys magenta out as transparent.
+  ghost(size = 64) {
+    const cv = makeCanvas(size);
+    const ctx = cv.getContext('2d');
+    const N = 16;                 // 16x16 logical pixels
+    const s = Math.ceil(size / N);
+    for (let cy = 0; cy < N; cy++) {
+      for (let cx = 0; cx < N; cx++) {
+        const dx = (cx - 7.5) / 7;
+        const dy = (cy - 7) / 7.5;
+        let inside = dx * dx + dy * dy <= 1.0;     // rounded body
+        if (cy >= 12 && cx % 3 === 1) inside = false; // wavy feet
+        let color = '#ff00ff';                     // magenta = transparent key
+        if (inside) {
+          color = cx < 7 ? '#e8f0ff' : '#c2cee8';  // light body w/ shaded side
+          if (cy >= 5 && cy <= 7 && (cx === 5 || cx === 10)) color = '#101020'; // eyes
+        }
+        ctx.fillStyle = color;
+        ctx.fillRect(cx * (size / N), cy * (size / N), s, s);
+      }
+    }
+    return cv;
+  },
+
   grass(size = 64) {
     const cv = makeCanvas(size);
     const ctx = cv.getContext('2d');
@@ -142,15 +167,26 @@ export const TexGen = {
   },
 };
 
-// Upload a canvas (or color) as a GL texture with nearest filtering (no smoothing).
+// Upload a canvas as a GL texture with nearest filtering (no smoothing).
+// We upload the raw RGBA bytes (not the canvas object) so the alpha channel is
+// preserved identically on every GL backend — some drivers drop canvas alpha,
+// which would break our sprite cutouts.
 export function createTexture(gl, canvas) {
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+  const ctx = canvas.getContext('2d');
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0,
+    gl.RGBA, gl.UNSIGNED_BYTE, img.data);
   // Nearest filter = crunchy pixels. No mipmaps = shimmery aliasing, very PS1.
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  // WebGL1 only allows REPEAT on power-of-two textures; non-POT must clamp or
+  // they become "incomplete" and sample as solid black. Tiling ground textures
+  // are 64x64 (POT) and keep REPEAT; sprites can be any size and clamp.
+  const pot = (n) => (n & (n - 1)) === 0;
+  const wrap = (pot(canvas.width) && pot(canvas.height)) ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
   return tex;
 }

@@ -110,3 +110,19 @@ export function buildPyramid(uvScale = 1) {
   }
   return { vertices: verts, indices };
 }
+
+// A vertical, double-sided quad for billboard sprites. Spans x[-0.5,0.5],
+// y[0,1] (feet on the ground), facing +Z. Double-sided so it shows from any
+// angle regardless of how it's rotated to face the camera.
+export function buildQuad() {
+  const n = [0, 0, 1];
+  const v = [
+    -0.5, 0, 0, ...n, 0, 1,
+    0.5, 0, 0, ...n, 1, 1,
+    0.5, 1, 0, ...n, 1, 0,
+    -0.5, 1, 0, ...n, 0, 0,
+  ];
+  // front (CCW from +Z) + back (reversed)
+  const indices = [0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2];
+  return { vertices: v, indices };
+}

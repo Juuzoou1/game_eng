@@ -48,6 +48,16 @@ export class Audio {
     this._blip(320, 0.14, 'square', 0.12, 620);
   }
 
+  // Sharp zap for shooting an enemy.
+  zap() {
+    this._blip(880, 0.12, 'sawtooth', 0.16, 120);
+  }
+
+  // Harsh buzz when an enemy touches you.
+  hurt() {
+    this._blip(160, 0.22, 'sawtooth', 0.18, 60);
+  }
+
   // Rising fanfare when all gems are collected.
   win() {
     const notes = [523, 659, 784, 1046];

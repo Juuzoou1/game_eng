@@ -33,9 +33,9 @@ http://localhost:8000
 
 ### اللعب / Gameplay
 
-تمشّى في الساحة و**اجمع كل المجوهرات العشر** 💎. ما تقدر تعدّي الصناديق ولا الأعمدة (في تصادمات)، وكل شي له صوت ريترو 8-bit. أول ما تجمعهم كلهم تطلع لك نغمة فوز.
+تمشّى في الساحة و**اجمع كل المجوهرات العشر** 💎، واقفز فوق الصناديق، و**اطلق على الأشباح** 👻 اللي تطاردك (وجّه نظرك عليها واضغط). كل شي له صوت ريترو 8-bit، وأول ما تجمع المجوهرات كلها تطلع لك نغمة فوز.
 
-*Walk around and collect all 10 gems. Crates and pillars are solid (collision), everything has 8-bit sound, and a fanfare plays when you grab them all.*
+*Walk around and collect all 10 gems, jump on the crates, and zap the ghosts that chase you (aim at them and click). Everything has 8-bit sound and a win fanfare.*
 
 ### التحكم / Controls
 
@@ -44,6 +44,7 @@ http://localhost:8000
 | `W` `A` `S` `D` | المشي / move |
 | الماوس / Mouse | النظر / look around |
 | `Space` | القفز / jump (اقفز فوق الصناديق!) |
+| كليك يسار / Left-click | إطلاق على الشبح اللي تنظر له / zap the ghost you aim at |
 | `Shift` | الركض / run |
 | `Esc` | تحرير الماوس / release mouse |
 
@@ -129,7 +130,8 @@ game.run();
 |---|---|
 | `defineTexture(name, canvas\|color)` | تسجّل زخرفة (من `<canvas>` أو لون CSS) |
 | `defineMesh(name, {vertices,indices})` | تسجّل مجسم مخصّص |
-| `spawn({mesh, texture, position, rotation, scale, tint, update, solid})` | تنشئ كياناً؛ `solid:true` يضيف تصادم |
+| `spawn({mesh, texture, position, rotation, scale, tint, update, solid, billboard})` | تنشئ كياناً؛ `solid:true` يضيف تصادم، `billboard:true` يخلي السبرايت يواجه الكاميرا دايماً |
+| `input.consumeClick()` | يرجع `true` مرة وحدة عند كل كليك (للإطلاق) |
 | `despawn(entity)` | تحذف كياناً (وتصادمه) |
 | `useFirstPersonController(cfg)` | كاميرا مشي WASD + ماوس + قفز/جاذبية + تصادمات 3D |
 | `raycast(origin, dir, maxDist)` | يطلق شعاع ويرجع أقرب اصطدام `{distance, point, entity}` (بدون معاملات = من الكاميرا للأمام) |
@@ -138,8 +140,10 @@ game.run();
 | `g.input` / `g.audio` / `g.camera` / `g.scene` | وصول مباشر للأنظمة |
 | `run()` | يبدأ حلقة اللعبة |
 
-المجسمات الجاهزة: `'cube'` · `'plane'` · `'pyramid'`.
-الزخارف الجاهزة في `TexGen`: `checker` · `brick` · `metal` · `crate` · `grass` · `gem`.
+المجسمات الجاهزة: `'cube'` · `'plane'` · `'pyramid'` · `'quad'` (للسبرايتات).
+الزخارف الجاهزة في `TexGen`: `checker` · `brick` · `metal` · `crate` · `grass` · `gem` · `ghost`.
+
+> 💡 **سبرايتات شفافة:** أي بكسل **ماجنتا خالص** (`#ff00ff`) في الزخرفة يُعتبر شفاف ويُقص (color-key) — زي ألعاب التسعينات. استخدمها مع `mesh:'quad'` و `billboard:true`.
 
 عشان تشغّل لعبتك، عدّل `src/main.js` ليستورد لعبتك بدل `gem-collector`.
 

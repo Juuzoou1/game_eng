@@ -24,12 +24,12 @@ import { Camera } from './camera.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Scene, Entity } from './scene.js';
-import { Mesh, buildCube, buildPlane, buildPyramid } from './mesh.js';
+import { Mesh, buildCube, buildPlane, buildPyramid, buildQuad } from './mesh.js';
 import { TexGen, createTexture } from './textures.js';
 import { aabbFromCube, collide, groundHeightAt, raycastBoxes } from './physics.js';
 import { Vec3 } from './math.js';
 
-export { TexGen, Vec3, Entity, buildCube, buildPlane, buildPyramid };
+export { TexGen, Vec3, Entity, buildCube, buildPlane, buildPyramid, buildQuad };
 
 export class Engine {
   constructor(canvas, options = {}) {
@@ -45,10 +45,11 @@ export class Engine {
     this.dt = 0;          // seconds since last frame
     this.fps = 0;
 
-    this._solids = [];    // AABB colliders
-    this._textures = {};  // name -> GL texture
-    this._meshes = {};    // name -> Mesh
-    this._fp = null;      // first-person controller config (or null)
+    this._solids = [];      // AABB colliders
+    this._billboards = [];  // entities that always face the camera
+    this._textures = {};    // name -> GL texture
+    this._meshes = {};      // name -> Mesh
+    this._fp = null;        // first-person controller config (or null)
 
     // user hooks
     this.onStart = null;
@@ -69,6 +70,7 @@ export class Engine {
     this.defineMesh('cube', buildCube(1));
     this.defineMesh('plane', buildPlane(1, 1));
     this.defineMesh('pyramid', buildPyramid(1));
+    this.defineMesh('quad', buildQuad()); // for billboard sprites
   }
 
   // --- asset registration -------------------------------------------------
@@ -115,6 +117,10 @@ export class Engine {
       entity._collider = aabbFromCube(entity);
       this._solids.push(entity._collider);
     }
+    if (opts.billboard) {
+      entity._billboard = true;
+      this._billboards.push(entity);
+    }
     return entity;
   }
 
@@ -123,6 +129,10 @@ export class Engine {
     if (entity._collider) {
       const i = this._solids.indexOf(entity._collider);
       if (i >= 0) this._solids.splice(i, 1);
+    }
+    if (entity._billboard) {
+      const j = this._billboards.indexOf(entity);
+      if (j >= 0) this._billboards.splice(j, 1);
     }
   }
 
@@ -241,6 +251,10 @@ export class Engine {
       if (this._fp) this._updateFirstPerson(this.dt);
       if (this.onUpdate) this.onUpdate(this, this.dt);
       this.scene.update(this.dt, this.time);
+
+      // Turn every billboard to face the camera (cylindrical, Y-axis only).
+      const faceYaw = this.camera.yaw + Math.PI;
+      for (const e of this._billboards) e.rotation[1] = faceYaw;
 
       this.renderer.beginScene(this.camera);
       this.scene.render(this.renderer);

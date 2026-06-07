@@ -26,6 +26,7 @@ import { Audio } from './audio.js';
 import { Scene, Entity } from './scene.js';
 import { Mesh, buildCube, buildPlane, buildPyramid, buildQuad } from './mesh.js';
 import { TexGen, createTexture } from './textures.js';
+import { parseOBJ } from './obj.js';
 import { aabbFromCube, collide, groundHeightAt, raycastBoxes } from './physics.js';
 import { Vec3, Mat4 } from './math.js';
 
@@ -53,11 +54,13 @@ export class Engine {
     this._fp = null;        // first-person controller config (or null)
     this._shake = 0;        // screen-shake magnitude
     this._everLocked = false;
+    this._destroyed = false;
 
     // game state: 'playing' | 'paused' | 'over'
     this.state = 'playing';
 
     // user hooks
+    this.onLoad = null;        // async (g) => {}  — load assets before start
     this.onStart = null;
     this.onUpdate = null;
     this.onStateChange = null; // (state, message) => {}
@@ -122,6 +125,31 @@ export class Engine {
 
   texture(name) { return this._textures[name]; }
   mesh(name) { return this._meshes[name]; }
+
+  // --- loading external assets (async) ------------------------------------
+
+  // Load a Wavefront .OBJ model from a URL and register it as a mesh.
+  async loadModel(name, url) {
+    const text = await (await fetch(url)).text();
+    this.defineMesh(name, parseOBJ(text));
+    return this._meshes[name];
+  }
+
+  // Load an image (png/jpg/gif) from a URL and register it as a texture.
+  loadTexture(name, url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const cv = document.createElement('canvas');
+        cv.width = img.width; cv.height = img.height;
+        cv.getContext('2d').drawImage(img, 0, 0);
+        this.defineTexture(name, cv);
+        resolve(this._textures[name]);
+      };
+      img.onerror = () => reject(new Error('failed to load image: ' + url));
+      img.src = url;
+    });
+  }
 
   // --- entities -----------------------------------------------------------
 
@@ -328,9 +356,10 @@ export class Engine {
 
   // --- main loop ----------------------------------------------------------
 
-  run() {
+  async run() {
+    if (this.onLoad) await this.onLoad(this); // load external assets first
+    if (!this._destroyed) this._running = true; else return;
     if (this.onStart) this.onStart(this);
-    this._running = true;
 
     let last = performance.now();
     let frames = 0, acc = 0;
@@ -384,6 +413,7 @@ export class Engine {
   // (used to restart cleanly into a fresh game without stacking listeners).
   destroy() {
     this._running = false;
+    this._destroyed = true;
     window.removeEventListener('resize', this._onResize);
     document.removeEventListener('pointerlockchange', this._onLockChange);
     this.canvas.removeEventListener('click', this._onClickAudio);

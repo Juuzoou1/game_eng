@@ -82,9 +82,11 @@ src/
     textures.js         زخارف تُرسم برمجياً
     camera.js           كاميرا منظور أول
     input.js            كيبورد + قفل الماوس
-    physics.js          تصادمات AABB
+    physics.js          تصادمات AABB + raycasting
     audio.js            أصوات 8-bit (Web Audio)
+    obj.js              محلّل مجسمات Wavefront .obj
     scene.js            الكيانات (entities) والتحويلات
+  assets/               أصول خارجية (مثال: star.obj + star.png)
   games/                ألعاب مبنية فوق المحرك (نفس المحرك!)
     gem-collector.js    لعبة ١: استكشاف · جمع مجوهرات · إطلاق على الأشباح
     tower-climb.js      لعبة ٢: تسلّق برج بالقفز قبل الوقت — مختلفة تماماً
@@ -131,6 +133,9 @@ game.run();
 |---|---|
 | `defineTexture(name, canvas\|color)` | تسجّل زخرفة (من `<canvas>` أو لون CSS) |
 | `defineMesh(name, {vertices,indices})` | تسجّل مجسم مخصّص |
+| `await loadModel(name, url)` | تحمّل مجسم `.obj` خارجي وتسجّله |
+| `await loadTexture(name, url)` | تحمّل صورة `.png/.jpg` خارجية كزخرفة |
+| `onLoad = async (g)=>{…}` | يُنتظَر قبل بدء اللعبة — حمّل أصولك هنا |
 | `spawn({mesh, texture, position, rotation, scale, tint, update, solid, billboard})` | تنشئ كياناً؛ `solid:true` يضيف تصادم، `billboard:true` يخلي السبرايت يواجه الكاميرا دايماً |
 | `input.consumeClick()` | يرجع `true` مرة وحدة عند كل كليك (للإطلاق) |
 | `despawn(entity)` | تحذف كياناً (وتصادمه) |

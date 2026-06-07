@@ -28,6 +28,14 @@ export function createGame(canvas, ui = {}) {
   // a big ground mesh whose texture tiles 30x (instead of stretching)
   game.defineMesh('ground', buildPlane(60, 30));
 
+  // --- load EXTERNAL assets (a .obj model + a .png image) before the game starts ---
+  game.onLoad = async (g) => {
+    await Promise.all([
+      g.loadModel('star', 'assets/star.obj'),
+      g.loadTexture('startex', 'assets/star.png'),
+    ]);
+  };
+
   // --- use the engine's built-in walking controller, with footstep + jump sfx ---
   game.useFirstPersonController({
     bounds: 28,
@@ -84,13 +92,14 @@ export function createGame(canvas, ui = {}) {
       }
     }
 
-    // spinning metal centerpiece
+    // spinning centerpiece — an EXTERNAL .obj model with an EXTERNAL .png texture
     g.spawn({
-      mesh: 'pyramid', texture: 'metal',
-      position: [0, 1.2, 0], scale: [2, 2, 2],
+      mesh: 'star', texture: 'startex',
+      position: [0, 2.0, 0], scale: [1.6, 1.6, 1.6],
       update: (e, dt, t) => {
-        e.rotation[1] += dt * 1.2;
-        e.position[1] = 1.4 + Math.sin(t * 2) * 0.3;
+        e.rotation[1] += dt * 1.4;
+        e.rotation[2] += dt * 0.5;
+        e.position[1] = 2.0 + Math.sin(t * 2) * 0.3;
       },
     });
 
